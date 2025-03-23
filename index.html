@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Carregamento</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #333;
+      color: white;
+    }
+    input, select {
+      width: 100%;
+      padding: 5px;
+      box-sizing: border-box;
+    }
+    .resumo {
+      background-color: #FFD966;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #login, #cadastro {
+      max-width: 400px;
+      margin: 50px auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .hidden { display: none; }
+    .erro { color: red; text-align: center; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div id="login">
+    <h1>Login</h1>
+    <input type="text" id="usuario" placeholder="Usuário"><br><br>
+    <input type="password" id="senha" placeholder="Senha"><br><br>
+    <button onclick="fazerLogin()">Entrar</button>
+    <p><a href="#" onclick="mostrarCadastro()">Criar conta</a></p>
+    <div class="erro" id="erroLogin"></div>
+  </div>
+
+  <div id="cadastro" class="hidden">
+    <h1>Cadastro</h1>
+    <input type="text" id="novoUsuario" placeholder="Novo usuário"><br><br>
+    <input type="password" id="novaSenha" placeholder="Nova senha"><br><br>
+    <button onclick="cadastrarUsuario()">Cadastrar</button>
+    <p><a href="#" onclick="mostrarLogin()">Voltar</a></p>
+    <div class="erro" id="erroCadastro"></div>
+  </div>
+
+  <div id="sistema" class="hidden">
+    <h1>Sistema de Carregamento - Semana</h1>
+    <button onclick="salvarSemana()">Salvar Semana (.txt)</button>
+    <button onclick="limparTudo()">Limpar Tudo</button>
+    <button onclick="exportarComoPDF()">Exportar como PDF</button>
+    <div id="semana"></div>
+    <h2>Resumo Semanal</h2>
+    <table id="resumo">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Total KG</th>
+          <th>Total (R$)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const nomesFixos = ["Martin", "Cirilo", "Blay", "Richard", "", ""];
+    const dias = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+    const usuarios = JSON.parse(localStorage.getItem("usuarios") || '{"admin":"1234"}');
+
+    function fazerLogin() {
+      const u = document.getElementById("usuario").value;
+      const s = document.getElementById("senha").value;
+      if (usuarios[u] && usuarios[u] === s) {
+        localStorage.setItem("logado", u);
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("sistema").classList.remove("hidden");
+        iniciarSistema();
+      } else {
+        document.getElementById("erroLogin").innerText = "Usuário ou senha incorretos.";
+      }
+    }
+
+    function mostrarCadastro() {
+      document.getElementById("login").classList.add("hidden");
+      document.getElementById("cadastro").classList.remove("hidden");
+    }
+
+    function mostrarLogin() {
+      document.getElementById("cadastro").classList.add("hidden");
+      document.getElementById("login").classList.remove("hidden");
+    }
+
+    function cadastrarUsuario() {
+      const u = document.getElementById("novoUsuario").value;
+      const s = document.getElementById("novaSenha").value;
+      if (u && s) {
+        usuarios[u] = s;
+        localStorage.setItem("usuarios", JSON.stringify(usuarios));
+        alert("Usuário cadastrado com sucesso!");
+        mostrarLogin();
+      } else {
+        document.getElementById("erroCadastro").innerText = "Preencha todos os campos.";
+      }
+    }
+
+    window.onload = () => {
+      if (localStorage.getItem("logado")) {
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("sistema").classList.remove("hidden");
+        iniciarSistema();
+      }
+    };
+
+    function iniciarSistema() {
+      const semana = document.getElementById("semana");
+      semana.innerHTML = "";
+      dias.forEach(dia => {
+        const bloco = document.createElement("div");
+        bloco.innerHTML = `<h2>${dia}</h2>`;
+        const tabela = document.createElement("table");
+        tabela.innerHTML = `
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Data</th>
+              <th>Local</th>
+              <th>KG</th>
+              <th>Total (R$)</th>
+              <th>Trabalhadores</th>
+              <th>Valor Diária</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${nomesFixos.map(nome => `
+              <tr>
+                <td><input class="nome" value="${nome}"></td>
+                <td><input type="date" class="data"></td>
+                <td><select class="local">
+                  <option value="">--</option>
+                  <option value="Bom Jardim">Bom Jardim</option>
+                  <option value="Bragantina">Bragantina</option>
+                </select></td>
+                <td><input type="number" class="kg"></td>
+                <td class="total"></td>
+                <td><select class="trabalhadores">
+                  ${[1,2,3,4,5,6].map(n => `<option value="${n}">${n}</option>`).join('')}</select></td>
+                <td class="diaria"></td>
+              </tr>
+            `).join('')}
+          </tbody>`;
+        bloco.appendChild(tabela);
+        semana.appendChild(bloco);
+      });
+      document.querySelectorAll("input, select").forEach(e => e.addEventListener("input", atualizar));
+    }
+
+    function atualizar() {
+      const resumo = {};
+      document.querySelectorAll("table tbody").forEach(tbody => {
+        [...tbody.rows].forEach(row => {
+          const nome = row.querySelector(".nome").value.trim();
+          const kg = parseFloat(row.querySelector(".kg").value) || 0;
+          const trab = parseInt(row.querySelector(".trabalhadores").value) || 1;
+          const total = kg * 0.12;
+          const diaria = total / trab;
+          row.querySelector(".total").innerText = total.toFixed(2);
+          row.querySelector(".diaria").innerText = diaria.toFixed(2);
+          if (nome) {
+            if (!resumo[nome]) resumo[nome] = { kg: 0, total: 0 };
+            resumo[nome].kg += kg;
+            resumo[nome].total += diaria;
+          }
+        });
+      });
+      const tbody = document.querySelector("#resumo tbody");
+      tbody.innerHTML = "";
+      for (const nome in resumo) {
+        const tr = document.createElement("tr");
+        tr.className = "resumo";
+        tr.innerHTML = `<td>${nome}</td><td>${resumo[nome].kg.toFixed(2)}</td><td>R$ ${resumo[nome].total.toFixed(2)}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function salvarSemana() {
+      let texto = "Resumo da Semana:\n\n";
+      document.querySelectorAll("table tbody").forEach((tbody, i) => {
+        texto += `Dia: ${dias[i]}\n`;
+        [...tbody.rows].forEach(row => {
+          const nome = row.querySelector(".nome").value;
+          const data = row.querySelector(".data").value;
+          const local = row.querySelector(".local").value;
+          const kg = row.querySelector(".kg").value;
+          const total = row.querySelector(".total").innerText;
+          const trab = row.querySelector(".trabalhadores").value;
+          const diaria = row.querySelector(".diaria").innerText;
+          if (nome || kg) {
+            texto += `Nome: ${nome} | Data: ${data} | Local: ${local} | KG: ${kg} | Total: R$${total} | Trab: ${trab} | Diária: R$${diaria}\n`;
+          }
+        });
+        texto += "\n";
+      });
+      const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "carregamento_semana.txt";
+      link.click();
+    }
+
+    function limparTudo() {
+      if (confirm("Deseja limpar todos os dados?")) {
+        document.querySelectorAll("input, select").forEach(el => el.value = el.tagName === "SELECT" ? "" : "");
+        document.querySelectorAll(".total, .diaria").forEach(el => el.innerText = "");
+        document.querySelector("#resumo tbody").innerHTML = "";
+      }
+    }
+
+    function exportarComoPDF() {
+      window.print();
+    }
+  </script>
+</body>
+</html>
